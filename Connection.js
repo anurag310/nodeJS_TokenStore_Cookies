@@ -4,7 +4,9 @@ const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken')
 const cookieParser = require("cookie-parser");
 const bcrypt = require('bcrypt')
+const nocache = require('nocache');
 
+app.use(nocache());
 
 
 
@@ -21,12 +23,17 @@ const testSchema = mongoose.Schema({
 // to read data from login to api 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// app.use((req, res, next) => {
+//   res.header("Cache-Control", "no-cache, no-store, must-revalidate");
+//   next();
+// });
 
 
 const testModel = mongoose.model("Model", testSchema);
 
 
 app.get("/", (req, res) => {
+  
   res.render('login.ejs')
 })
 
@@ -52,7 +59,7 @@ app.post("/login", async (req, res) => {
   //console.log(id);
   if (decryptPassword) {
     const createToken = jwt.sign(id, "AnuragKey");
-    console.log(createToken);
+    console.log("Create Token",createToken);
     res.cookie("token", createToken, {
       expires: new Date(Date.now() + 45000), // 240,000 milliseconds = 240 seconds
       httpOnly: true,
@@ -63,22 +70,37 @@ app.post("/login", async (req, res) => {
     res.send("Please Provide Correct Password!!!!");
   }
 })
-
 app.post("/addUser", async (req, res) => {
 
   const data = await testModel.findOne({ email: req.body.email });
-  console.log(data.email);
-  if (req.body.email != data.email) {
-    const hasedPassword = await bcrypt.hash(req.body.password, 8);
-    await testModel.create({ userName: req.body.userName, email: req.body.email, password: hasedPassword })
-  }
-  else {
-    res.send("Email Already Exist");
+
+  if (data) {
+    console.log("data",data);
+    res.send("Email Already Exists");
     res.render('register.ejs');
+  } else {
+    const hashedPassword = await bcrypt.hash(req.body.password, 8);
+    await testModel.create({ userName: req.body.userName, email: req.body.email, password: hashedPassword });
+    console.log(req.body);
+    res.send("Registration successful");
   }
-  console.log(req.body);
-  res.send("register")
 })
+
+// app.post("/addUser", async (req, res) => {
+
+//   const data = await testModel.findOne({ email: req.body.email });
+//   console.log(data.email);
+//   if (req.body.email != data.email) {
+//     const hasedPassword = await bcrypt.hash(req.body.password, 8);
+//     await testModel.create({ userName: req.body.userName, email: req.body.email, password: hasedPassword })
+//   }
+//   else {
+//     res.send("Email Already Exist");
+//     res.render('register.ejs');
+//   }
+//   console.log(req.body);
+//   res.send("register")
+// })
 
 
 app.listen(2222, () => {
